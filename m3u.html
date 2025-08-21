@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M3U Playlist Editor</title>
+
+    <script src='https://cdn.jwplayer.com/libraries/MAaRkUjT.js'></script>
+    <script>jwplayer.key = "jTL7dlu7ybUI5NZnDdVgb1laM8/Hj3ftIJ5Vqg==";</script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* --- DARK THEME (Default) --- */
+            --primary-color: #22d3ee; /* Bright Cyan */
+            --primary-color-dark: #0891b2;
+            --secondary-color: #94a3b8;
+            --success-color: #22c55e;
+            --warning-color: #f59e0b;
+            --danger-color: #f43f5e;
+            --background-color: #0f172a; /* Slate 900 */
+            --surface-color: #1e293b;    /* Slate 800 */
+            --border-color: #334155;     /* Slate 700 */
+            --text-color: #f1f5f9;       /* Slate 100 */
+            --text-color-light: #94a3b8; /* Slate 400 */
+            --input-bg: #334155;
+            --table-header-bg: #334155;
+            --row-hover-bg: #334155;
+            --row-selected-bg: #0891b220;
+            --modal-bg: #1e293b;
+            --modal-header-bg: rgba(0,0,0,0.2);
+        }
+
+        body.light-theme {
+            /* --- LIGHT THEME --- */
+            --primary-color: #0891b2;
+            --primary-color-dark: #0e7490;
+            --secondary-color: #64748b;
+            --success-color: #16a34a;
+            --warning-color: #d97706;
+            --danger-color: #dc2626;
+            --background-color: #f1f5f9;
+            --surface-color: #ffffff;
+            --border-color: #cbd5e1;
+            --text-color: #334155;
+            --text-color-light: #64748b;
+            --input-bg: #ffffff;
+            --table-header-bg: #f8fafc;
+            --row-hover-bg: #f1f5f9;
+            --row-selected-bg: #0891b21a;
+            --modal-bg: #ffffff;
+            --modal-header-bg: #f1f5f9;
+        }
+
+        * { box-sizing: border-box; }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        tr, #groupSortList li {
+            cursor: grab;
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        tbody tr:hover {
+            background-color: var(--row-hover-bg);
+        }
+
+        tbody tr.selected {
+            background-color: var(--row-selected-bg);
+        }
+
+        tr:active, #groupSortList li:active {
+            cursor: grabbing;
+        }
+
+        .row-checkbox {
+            transform: scale(1.6);
+            cursor: pointer;
+        }
+        
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #0891b240;
+        }
+        .sortable-drag {
+            opacity: 0.9;
+        }
+        
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .theme-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--surface-color); border: 1px solid var(--border-color);
+            transition: .4s; border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 26px; width: 26px; left: 3px; bottom: 3px;
+            background-color: var(--secondary-color); transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--surface-color); }
+        input:checked + .slider:before { transform: translateX(26px); }
+        .slider .icon {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            color: var(--primary-color); transition: opacity 0.4s ease;
+        }
+        .slider .sun-icon { left: 8px; opacity: 0; }
+        .slider .moon-icon { right: 8px; opacity: 1; }
+        input:checked + .slider .sun-icon { opacity: 1; }
+        input:checked + .slider .moon-icon { opacity: 0; }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto; background-color: var(--surface-color);
+            padding: 2rem; border-radius: 12px;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .ticker-wrap {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            background-color: var(--surface-color);
+            border-radius: 6px;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+        .ticker-label {
+            padding: 0.5rem 1.25rem;
+            font-weight: 600;
+            background-color: var(--danger-color);
+            color: white;
+            border-radius: 5px 0 0 5px;
+        }
+        .ticker-scroll-area {
+            flex-grow: 1;
+            overflow: hidden;
+        }
+        .ticker {
+            display: inline-flex;
+            white-space: nowrap;
+            animation: ticker-scroll 70s linear infinite;
+            animation-delay: 2s;
+        }
+        .ticker-item {
+            padding: 0 2rem;
+            color: var(--text-color-light);
+        }
+        .ticker-item.highlight {
+            color: var(--warning-color);
+            font-weight: 500;
+        }
+        @keyframes ticker-scroll {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-150%); }
+        }
+        
+        #initial-view { text-align: center; }
+
+        .loader-section {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .file-loader, .url-loader {
+            flex: 1;
+            width: 100%;
+        }
+        
+        .file-loader {
+            text-align: center; padding: 1.5rem; border: 2px dashed var(--border-color);
+            border-radius: 8px; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .file-loader:hover { background-color: var(--background-color); border-color: var(--primary-color); }
+        .url-loader { display: flex; }
+        #fileInput { display: none; }
+        #fileName { margin-top: 0.5rem; font-style: italic; color: var(--text-color-light); font-size: 0.9em; }
+
+        #btnCreateNew {
+            margin-top: 1.5rem;
+            background-color: transparent;
+            color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            font-weight: 400;
+        }
+        #btnCreateNew:hover {
+            background-color: var(--surface-color);
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .status-checker-controls {
+            display: none; 
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+        #checker-progress { font-style: italic; color: var(--warning-color); }
+        #cancelChecksBtn { background-color: var(--danger-color); color: white; }
+
+        #urlInput {
+            flex-grow: 1; padding: 0.75rem 1rem; border: 1px solid var(--border-color);
+            border-radius: 6px 0 0 6px; font-size: 1rem; font-family: 'Poppins', sans-serif;
+            background-color: var(--input-bg); color: var(--text-color);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
+        }
+        #urlInput:focus {
+            outline: none; border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
+        }
+        
+        .actions {
+            display: flex;
+            margin-bottom: 1.5rem;
+            position: sticky;
+            top: 1rem;
+            z-index: 10;
+        }
+        
+        .filters-container {
+            display: flex;
+            gap: 0.75rem;
+            flex-grow: 1;
+            align-items: center;
+        }
+        
+        .filters-container input, .filters-container select {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            font-size: 0.95rem;
+            font-family: 'Poppins', sans-serif;
+        }
+        .filters-container input {
+            flex-grow: 1;
+        }
+        
+        button {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+            padding: 0.6rem 1.2rem; border-radius: 6px; border: none;
+            color: white; font-size: 1rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease, opacity 0.2s ease;
+            background-color: var(--primary-color); color: #0f172a;
+        }
+        button:hover { background-color: var(--primary-color-dark); }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .sort-actions button, #btnStats { background-color: var(--secondary-color); color: white; }
+        #btnSave { background-color: var(--success-color); color: white; }
+        #btnRemoveOffline { background-color: var(--danger-color); color: white; }
+        #btnRecheckOffline { background-color: var(--warning-color); color: #0f172a; }
+
+        .controls-accordion {
+            width: 100%;
+            background-color: var(--surface-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        summary {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background-color: var(--table-header-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            list-style: none; 
+            transition: background-color 0.2s ease;
+        }
+        summary::-webkit-details-marker {
+            display: none;
+        }
+        summary:hover {
+            background-color: var(--border-color);
+        }
+        .controls-accordion[open] > summary {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        .controls-content-wrapper {
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: space-between;
+        }
+        .controls-content-wrapper > div {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .action-btn {
+            background: none; border: 1px solid transparent; border-radius: 50%;
+            width: 36px; height: 36px; padding: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: background-color 0.2s ease;
+        }
+        .action-btn svg { width: 20px; height: 20px; }
+        .btn-check { color: var(--primary-color); }
+        .btn-check:hover { background-color: rgba(34, 211, 238, 0.1); }
+        .btn-status { color: var(--warning-color); }
+        .btn-status:hover { background-color: rgba(245, 158, 11, 0.1); }
+        .btn-delete { color: var(--danger-color); }
+        .btn-delete:hover { background-color: rgba(244, 63, 94, 0.1); }
+        
+        #editor-section { display: none; }
+        .table-wrapper { overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border-bottom: 1px solid var(--border-color); padding: 0.75rem 1rem; text-align: left; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        
+        th {
+            background-color: var(--table-header-bg); color: var(--text-color-light);
+            font-weight: 500; text-transform: uppercase; font-size: 0.8em; letter-spacing: 0.05em;
+        }
+        
+        td input[type="text"] {
+            width: 100%; padding: 0.5rem; border: 1px solid var(--border-color);
+            border-radius: 4px; font-size: 0.95rem; font-family: 'Poppins', sans-serif;
+            background-color: var(--input-bg); color: var(--text-color);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease;
+            cursor: text;
+        }
+        td input[type="text"]:focus {
+            outline: none; border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
+        }
+        
+        .logo-preview-cell { width: 60px; text-align: center; padding: 0.5rem; }
+        .logo-preview { height: 40px; width: 40px; object-fit: contain; background-color: rgba(255,255,255,0.05); border-radius: 4px; }
+        body.light-theme .logo-preview { background-color: var(--background-color); }
+
+        .status-cell-content { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%; }
+        .status-text { font-weight: 500; font-size: 0.9em; }
+        .status-text.online { color: var(--success-color); }
+        .status-text.offline, .status-text.invalid { color: var(--danger-color); }
+        .status-text.checking { color: var(--warning-color); }
+        .status-text.unchecked { color: var(--text-color-light); }
+        
+        .actions-cell-content { display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; width: 100%; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6); display: none;
+            align-items: center; justify-content: center; z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.visible { display: flex; }
+        
+        .modal-content {
+            background: var(--modal-bg); color: var(--text-color); padding: 0; border-radius: 12px;
+            position: relative; width: 90%; max-width: 800px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5); overflow: hidden;
+            display: flex; flex-direction: column; max-height: 80vh;
+        }
+        .modal-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.75rem 1.25rem; background-color: var(--modal-header-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .modal-header h2 { margin: 0; font-size: 1.1em; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .modal-close {
+            background: none; border: none; color: #a0a0a0; font-size: 28px;
+            cursor: pointer; line-height: 1; padding-left: 1.25rem; transition: color 0.2s ease;
+        }
+        .modal-close:hover { color: var(--text-color); }
+        .modal-body { padding: 1.25rem; overflow-y: auto; }
+        .modal-footer {
+            padding: 0.75rem 1.25rem; background-color: var(--modal-header-bg);
+            border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.75rem;
+        }
+        #playerContainer { min-height: 200px; background-color: #000; }
+        #groupSortList { list-style: none; padding: 0; margin: 0; }
+        #groupSortList li {
+            background-color: var(--surface-color); padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color); border-radius: 6px;
+            margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.75rem;
+        }
+        
+        .col-select { width: 1%; text-align: center; }
+        .col-serial { width: 1%; text-align: center; color: var(--text-color-light); }
+        .col-drag { width: 1%; padding: 0 0.5rem; }
+        .col-logo-preview { width: 4%; }
+        .col-name { width: 18%; }
+        .col-group { width: 12%; }
+        .col-logo-url { width: 20%; }
+        .col-url { width: 20%; }
+        .col-status { width: 11%; text-align: center; min-width: 140px; }
+        .col-actions { width: 12%; text-align: center; min-width: 100px; }
+        
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 2000; }
+        .toast { background-color: var(--surface-color); color: var(--text-color); padding: 1rem 1.5rem; margin-top: 10px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); border-left: 5px solid var(--primary-color); opacity: 0; transform: translateX(100%); transition: all 0.4s ease; font-size: 0.95rem; }
+        .toast.show { opacity: 1; transform: translateX(0); }
+        .toast.success { border-left-color: var(--success-color); }
+        .toast.error { border-left-color: var(--danger-color); }
+        .toast.warning { border-left-color: var(--warning-color); }
+
+        #backToTopBtn {
+            display: none; position: fixed; bottom: 20px; right: 30px; z-index: 99;
+            border: none; outline: none; background-color: var(--primary-color); color: #0f172a;
+            cursor: pointer; padding: 0; border-radius: 50%; width: 48px; height: 48px;
+            font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        #backToTopBtn:hover { background-color: var(--primary-color-dark); }
+        
+        #bulk-actions-bar {
+            position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%);
+            z-index: 1001; background-color: var(--surface-color);
+            padding: 1rem 1.5rem; border-radius: 12px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+            display: flex; align-items: center; gap: 1rem;
+            transition: bottom 0.3s ease-in-out;
+            border: 1px solid var(--border-color);
+        }
+        #bulk-actions-bar.visible {
+            bottom: 20px;
+        }
+        #bulk-actions-bar span {
+            font-weight: 500;
+            color: var(--text-color-light);
+        }
+        #bulk-actions-bar button {
+            font-size: 0.9rem; padding: 0.5rem 1rem;
+        }
+        #bulkDeselectBtn {
+            background-color: transparent;
+            color: var(--secondary-color);
+            border: 1px solid var(--secondary-color);
+        }
+        #bulkDeselectBtn:hover {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        #statsList { list-style: none; padding: 0; font-size: 1.1rem; }
+        #statsList li { display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); }
+        #statsList li:last-child { border-bottom: none; }
+        #statsList li span:first-child { font-weight: 500; color: var(--text-color-light); }
+        #statsList li span:last-child { font-weight: 600; color: var(--primary-color); }
+
+        /* --- RESPONSIVE STYLES --- */
+        @media (max-width: 1200px) {
+            .controls-content-wrapper {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+        @media (max-width: 1024px) {
+            /* No rules needed here anymore, handled by smaller breakpoints */
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+            .container {
+                padding: 1rem;
+            }
+            .actions {
+                top: 0.5rem;
+            }
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .loader-section {
+                flex-direction: column;
+            }
+
+            .controls-content-wrapper > div,
+            .filters-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .url-loader {
+                flex-direction: column;
+            }
+            #urlInput {
+                border-radius: 6px;
+                text-align: center;
+            }
+            #btnLoadUrl {
+                width: 100%;
+                margin-top: 0.5rem;
+                border-radius: 6px;
+            }
+
+            .table-wrapper { border: none; }
+            table { border: 0; }
+            thead {
+                border: none;
+                clip: rect(0 0 0 0);
+                height: 1px;
+                margin: -1px;
+                overflow: hidden;
+                padding: 0;
+                position: absolute;
+                width: 1px;
+            }
+            tbody tr {
+                display: block;
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                margin-bottom: 1rem;
+                padding: 0.5rem;
+                background-color: transparent;
+            }
+            td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px dashed var(--border-color);
+                padding: 0.75rem 0.25rem;
+            }
+            
+            td::before {
+                content: attr(data-label);
+                font-weight: 500;
+                color: var(--text-color-light);
+                text-align: left;
+                padding-right: 1rem;
+                width: 90px;
+                flex-shrink: 0;
+            }
+            tr:last-child td { border-bottom: 1px dashed var(--border-color); }
+            td:last-child { border-bottom: 0; }
+            
+            .col-serial, .col-drag {
+                display: none;
+            }
+
+            td.col-select {
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+                border-bottom: none;
+                padding: 0 0 0.5rem 0;
+            }
+            td.col-select::before { display: none; }
+            .row-checkbox {
+                margin-right: 1.5rem;
+            }
+            td.logo-preview-cell {
+                justify-content: flex-start;
+            }
+
+            td input[type="text"] {
+                background-color: var(--input-bg);
+                border: 1px solid var(--border-color);
+                padding: 0.5rem;
+                width: 100%;
+                flex-grow: 1;
+                min-width: 100px; 
+                text-align: left;
+            }
+            
+            .status-cell-content {
+                width: auto;
+                justify-content: flex-end;
+            }
+            .actions-cell-content {
+                width: auto;
+                justify-content: flex-end;
+                gap: 1rem;
+            }
+            
+            #bulk-actions-bar {
+                width: 100%;
+                left: 0;
+                transform: translateX(0);
+                border-radius: 12px 12px 0 0;
+                padding: 1rem;
+                padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+                justify-content: space-around;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                border-left: none;
+                border-right: none;
+                border-bottom: none;
+            }
+            #bulk-actions-bar.visible {
+                bottom: 0;
+            }
+            #bulk-actions-bar span {
+                width: 100%;
+                text-align: center;
+                margin-bottom: 0.5rem;
+            }
+        }
+    </style>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') { document.body.classList.add('light-theme'); }
+        })();
+    </script>
+</head>
+<body>
+    <div id="top"></div>
+    <div class="container">
+        <div class="header-container">
+            <h1>M3U Playlist Editor</h1>
+            <label class="theme-switch" for="theme-checkbox" title="Switch Theme">
+                <input type="checkbox" id="theme-checkbox" />
+                <div class="slider"></div>
+            </label>
+        </div>
+        <div class="ticker-wrap">
+            <div class="ticker-label">Notice</div>
+            <div class="ticker-scroll-area">
+                <div class="ticker">
+                    <div class="ticker-item highlight">Large Playlist Tip: For very large playlists, the status check may be slow and could be rate-limited by the free proxy, causing false 'Offline' results. If this happens, wait a few minutes and use 'Recheck Offline'.</div>
+                    <div class="ticker-item">Welcome to the Advanced M3U Playlist Editor!</div>
+                    <div class="ticker-item">Tip: Use the 'Custom Group Sort' button for easy bulk ordering of your channel groups.</div>
+                    <div class="ticker-item">Notice: All processing is done in your browser; no data is uploaded to any server.</div>
+                </div>
+            </div>
+        </div>
+        <div id="initial-view">
+            <div class="loader-section">
+                <label for="fileInput" class="file-loader">
+                    <div>📂 Click here or drop an M3U file</div>
+                    <div id="fileName">No file selected</div>
+                </label>
+                <div class="url-loader">
+                    <input type="text" id="urlInput" placeholder="🔗 Or paste M3U URL and press Enter">
+                    <button id="btnLoadUrl">Load</button>
+                </div>
+            </div>
+            <input type="file" id="fileInput" accept=".m3u,.m3u8" style="display: none;">
+            <button id="btnCreateNew">Or, Create a New Playlist from Scratch</button>
+        </div>
+        <div id="editor-section">
+            
+            <div class="actions">
+                <details class="controls-accordion">
+                    <summary>☰ Show/Hide Controls</summary>
+                    <div class="controls-content-wrapper">
+                        <div class="sort-actions">
+                            <button id="btnAddRow">+ Add Blank Row to End</button>
+                            <button id="btnSortName">Sort by Name</button>
+                            <button id="btnSortGroup">Custom Group Sort</button>
+                            <button id="btnStats">📊 Stats</button>
+                        </div>
+                        <div class="filters-container">
+                            <input type="text" id="searchInput" placeholder="🔍 Search by Name, Group, or URL...">
+                            <select id="statusFilter">
+                                <option value="all">All Statuses</option>
+                                <option value="online">Online</option>
+                                <option value="offline">Offline</option>
+                                <option value="invalid">Invalid</option>
+                                <option value="checking">Checking</option>
+                                <option value="unchecked">Unchecked</option>
+                            </select>
+                            <select id="groupFilter">
+                                <option value="all">All Groups</option>
+                            </select>
+                        </div>
+                        <div class="main-actions">
+                            <button id="btnStartCheckAll">Start Checking All</button>
+                            <button id="btnRecheckOffline">Recheck Offline</button>
+                            <button id="btnRemoveOffline">Remove Offline</button>
+                            <button id="btnSave">✓ Save Playlist</button>
+                        </div>
+                        <div class="status-checker-controls" id="status-checker-controls">
+                            <span id="checker-progress"></span>
+                            <button id="cancelChecksBtn">Cancel</button>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="playlistTable">
+                    <thead>
+                        <tr>
+                            <th class="col-select"><input type="checkbox" id="selectAllCheckbox" title="Select All"></th>
+                            <th class="col-serial">#</th>
+                            <th class="col-drag"></th>
+                            <th class="col-logo-preview">Logo</th>
+                            <th class="col-name">Name</th>
+                            <th class="col-group">Group</th>
+                            <th class="col-logo-url">Logo URL</th>
+                            <th class="col-url">Stream URL</th>
+                            <th class="col-status">Status</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="playlistTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="playerModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Checking Stream...</h2>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div id="playerContainer"></div>
+        </div>
+    </div>
+    <div id="groupSortModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Custom Group Order</h2>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Drag and drop the groups into your desired order.</p>
+                <ul id="groupSortList"></ul>
+            </div>
+            <div class="modal-footer">
+                <button id="btnCancelSort" class="sort-actions">Cancel</button>
+                <button id="btnApplySort">Apply Order</button>
+            </div>
+        </div>
+    </div>
+    <div id="statsModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Playlist Statistics</h2>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <ul id="statsList"></ul>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast-container"></div>
+    <a href="#top"><button id="backToTopBtn" title="Go to top">⬆️</button></a>
+    
+    <div id="bulk-actions-bar">
+        <span id="selected-count">0 items selected</span>
+        <button id="btnAddRowAbove" style="background-color: var(--secondary-color); color: white;">Add Above</button>
+        <button id="btnAddRowBelow" style="background-color: var(--secondary-color); color: white;">Add Below</button>
+        <button id="bulkDeleteBtn" style="background-color: var(--danger-color); color: white;">Delete</button>
+        <button id="bulkGroupBtn" style="background-color: var(--secondary-color); color: white;">Edit Group</button>
+        <button id="bulkCheckBtn" style="background-color: var(--warning-color); color: #0f172a;">Check Status</button>
+        <button id="bulkDeselectBtn">Deselect All</button>
+    </div>
+
+    <script>
+    // --- SCRIPT SCOPE VARIABLES ---
+    let playlistData = [], sortState = { column: null, direction: 'asc' }, isPlayerSetup = false, isCheckingAll = false, hasUnsavedChanges = false;
+    let fileInput, fileLoader, fileNameDisplay, urlInput, btnLoadUrl, initialView, btnCreateNew, 
+        editorSection, playlistTableBody, btnAddRow, btnSortName, btnSortGroup, btnSave, 
+        themeCheckbox, statusCheckerControls, cancelChecksBtn, btnRemoveOffline, btnRecheckOffline, 
+        btnStartCheckAll, checkerProgress, backToTopBtn, searchInput, statusFilter, groupFilter, 
+        btnStats, selectAllCheckbox, bulkActionsBar, selectedCountSpan, bulkDeleteBtn, bulkGroupBtn, 
+        bulkCheckBtn, bulkDeselectBtn, playerModal, modalTitle, groupSortModal, groupSortList, statsModal,
+        btnAddRowAbove, btnAddRowBelow;
+        
+    // --- CORE FUNCTIONS ---
+    const placeholderSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23334155'%3E%3Cpath d='M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z'/%3E%3C/svg%3E";
+    const icons = {
+        drag: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="1"></circle><circle cx="12" cy="15" r="1"></circle><circle cx="12" cy="3" r="1"></circle><circle cx="12" cy="21" r="1"></circle></svg>`,
+        check: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>`,
+        trash: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>`,
+        status: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201-4.42 5.5 5.5 0 0110.133-2.02.75.75 0 11-1.349.64c-1.296-2.033-4.043-2.65-6.198-1.355a3.5 3.5 0 00-3.32 6.114.75.75 0 01-1.125.836A5.5 5.5 0 0115.312 11.424zM18 9.75a.75.75 0 01.75.75v2.546a5.5 5.5 0 01-10.133 2.02.75.75 0 111.349-.64c1.296 2.033-4.043 2.65-6.198 1.355a3.5 3.5 0 003.32-6.114.75.75 0 011.125-.836A5.5 5.5 0 0118 9.75z" clip-rule="evenodd" /></svg>`
+    };
+    function showToast(message, type = 'info', duration = 3000) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            toast.addEventListener('transitionend', () => toast.remove());
+        }, duration);
+    }
+    function escapeHTML(str) { const p = document.createElement('p'); p.textContent = str; return p.innerHTML.replace(/"/g, '&quot;'); }
+    async function handleUrlLoad() {
+        if (hasUnsavedChanges && !confirm("You have unsaved changes. Are you sure you want to load a new playlist?")) return;
+        const url = urlInput.value.trim();
+        if (!url) return;
+        hasUnsavedChanges = false;
+        fileNameDisplay.textContent = `Fetching from URL...`;
+        try {
+            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+            const response = await fetch(proxyUrl);
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+            const content = await response.text();
+            processM3UContent(content, url.split('/').pop() || 'playlist.m3u');
+        } catch (error) {
+            showToast(`Failed to fetch playlist. The URL may be invalid or the proxy service may be temporarily down.`, 'error');
+            fileNameDisplay.textContent = 'Failed to load from URL.';
+        }
+    }
+    function loadFile(file) {
+        if (hasUnsavedChanges && !confirm("You have unsaved changes. Are you sure you want to load a new file?")) return;
+        if (!file) return;
+        hasUnsavedChanges = false;
+        fileNameDisplay.textContent = `Loading: ${file.name}...`;
+        const reader = new FileReader();
+        reader.onload = (e) => processM3UContent(e.target.result, file.name);
+        reader.onerror = () => showToast(`Error reading file: ${file.name}`, 'error');
+        reader.readAsText(file);
+        fileInput.value = null;
+    }
+    function createNewPlaylist() { if (hasUnsavedChanges && !confirm("You have unsaved changes. Are you sure you want to create a new playlist?")) return; playlistData = []; hasUnsavedChanges = false; addNewRow(); sortState = { column: null, direction: 'asc' }; updateSortButtonLabels(); editorSection.style.display = 'block'; initialView.style.display = 'none'; fileNameDisplay.textContent = `Editing: New Playlist`; updateActionsBar(); updateGroupFilter(); }
+    function processM3UContent(content, sourceName) { parseM3U(content); sortState = { column: null, direction: 'asc' }; updateSortButtonLabels(); renderTable(); editorSection.style.display = 'block'; initialView.style.display = 'none'; fileNameDisplay.textContent = `Editing: ${sourceName} (${playlistData.length} entries)`; urlInput.value = ''; updateActionsBar(); updateGroupFilter(); }
+    function parseM3U(content) { playlistData = []; const lines = content.split(/\r?\n/); for (let i = 0; i < lines.length; i++) { const line = lines[i].trim(); if (line.startsWith('#EXTINF:')) { let urlLine = ''; for (let j = i + 1; j < lines.length; j++) { const nextLine = lines[j].trim(); if (nextLine && !nextLine.startsWith('#')) { urlLine = nextLine; i = j; break; } } if (urlLine) { const name = line.split(',').pop() || ''; const group = line.match(/group-title="([^"]*)"/)?.[1] || 'Uncategorized'; const logo = line.match(/tvg-logo="([^"]*)"/)?.[1] || ''; playlistData.push({ name, group, logo, url: urlLine, status: 'unchecked' }); } } } }
+    function renderTable() { playlistTableBody.innerHTML = ''; playlistData.forEach((item, index) => playlistTableBody.appendChild(createTableRow(item, index))); applyAllFilters(); updateGroupFilter(); updateActionsBar(); }
+    function createTableRow(item, index) {
+        const row = document.createElement('tr');
+        row.dataset.index = index;
+        const statusClass = item.status || 'unchecked';
+        const statusText = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
+        
+        row.innerHTML = `
+            <td class="col-select" data-label="Select"><input type="checkbox" class="row-checkbox"></td>
+            <td class="col-serial" data-label="#">${index + 1}</td>
+            <td class="col-drag drag-handle" data-label="Drag">${icons.drag}</td>
+            <td class="col-logo-preview logo-preview-cell" data-label="Logo"><img class="logo-preview" src="${escapeHTML(item.logo || placeholderSvg)}" loading="lazy"></td>
+            <td class="col-name" data-label="Name"><input type="text" class="name-input" value="${escapeHTML(item.name)}"></td>
+            <td class="col-group" data-label="Group"><input type="text" class="group-input" value="${escapeHTML(item.group)}"></td>
+            <td class="col-logo-url" data-label="Logo URL"><input type="text" class="logo-input" value="${escapeHTML(item.logo)}"></td>
+            <td class="col-url" data-label="Stream URL"><input type="text" class="url-input" value="${escapeHTML(item.url)}"></td>
+            <td class="col-status" data-label="Status"><div class="status-cell-content"><span class="status-text ${statusClass}">${statusText}</span><button class="action-btn btn-status" title="Check Status">${icons.status}</button></div></td>
+            <td class="col-actions" data-label="Actions"><div class="actions-cell-content"><button class="action-btn btn-check" title="Play Stream">${icons.check}</button><button class="action-btn btn-delete" title="Delete Row">${icons.trash}</button></div></td>
+        `;
+        
+        const markChange = () => { hasUnsavedChanges = true; };
+        row.querySelectorAll('input[type="text"]').forEach(input => input.addEventListener('input', markChange));
+        row.querySelector('.name-input').addEventListener('input', (e) => playlistData[index].name = e.target.value);
+        row.querySelector('.group-input').addEventListener('input', (e) => { playlistData[index].group = e.target.value; updateGroupFilter(); });
+        row.querySelector('.logo-input').addEventListener('input', (e) => { playlistData[index].logo = e.target.value; row.querySelector('.logo-preview').src = e.target.value || placeholderSvg; });
+        row.querySelector('.url-input').addEventListener('input', (e) => playlistData[index].url = e.target.value);
+        row.querySelector('.btn-check').addEventListener('click', () => checkLink(item.url, item.name));
+        row.querySelector('.btn-status').addEventListener('click', () => checkStreamStatus(index));
+        row.querySelector('.btn-delete').addEventListener('click', () => { playlistData.splice(index, 1); renderTable(); hasUnsavedChanges = true; });
+        row.querySelector('.row-checkbox').addEventListener('change', (e) => { 
+            row.classList.toggle('selected', e.target.checked);
+            updateActionsBar(); 
+        });
+        return row;
+    }
+    async function checkStreamStatus(index) {
+        const item = playlistData[index];
+        const row = playlistTableBody.querySelector(`tr[data-index="${index}"]`);
+        if (!item || !row) return;
+        const statusElement = row.querySelector('.status-text');
+        const url = item.url;
+        try { new URL(url); } catch (error) { item.status = 'invalid'; if (statusElement) { statusElement.textContent = 'Invalid'; statusElement.className = 'status-text invalid'; } hasUnsavedChanges = true; return; }
+        item.status = 'checking'; if (statusElement) { statusElement.textContent = 'Checking...'; statusElement.className = 'status-text checking'; }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        try {
+            const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+            const response = await fetch(proxyUrl, { method: 'GET', mode: 'cors', signal: controller.signal });
+            clearTimeout(timeoutId);
+            const contentType = (response.headers.get('content-type') || '').toLowerCase();
+            const newStatus = response.ok && (contentType.includes('mpegurl') || contentType.includes('x-mpegurl') || contentType.includes('octet-stream')) ? 'online' : 'offline';
+            item.status = newStatus; if (statusElement) { statusElement.textContent = newStatus.charAt(0).toUpperCase() + newStatus.slice(1); statusElement.className = `status-text ${newStatus}`; }
+        } catch (error) {
+            clearTimeout(timeoutId);
+            item.status = 'offline'; if (statusElement) { statusElement.textContent = 'Offline'; statusElement.className = 'status-text offline'; }
+        }
+        hasUnsavedChanges = true;
+    }
+    function removeOffline() { if (!confirm('Are you sure you want to remove all offline and invalid channels? This cannot be undone.')) { return; } const originalCount = playlistData.length; playlistData = playlistData.filter(item => item.status !== 'offline' && item.status !== 'invalid'); const removedCount = originalCount - playlistData.length; showToast(`${removedCount} offline/invalid channel(s) removed.`, 'success'); renderTable(); hasUnsavedChanges = true; }
+    function checkLink(url, name) { if (!url) return showToast('URL is empty.', 'warning'); modalTitle.textContent = name ? `Playing: ${name}` : 'Checking Stream...'; playerModal.classList.add('visible'); if (!isPlayerSetup) { jwplayer("playerContainer").setup({ file: url, width: '100%', aspectratio: '16:9', events: { onError: () => { playerModal.classList.remove('visible'); setTimeout(() => showToast('Link appears to be offline or is invalid.', 'error'), 100); } } }); isPlayerSetup = true; } else { jwplayer("playerContainer").load([{ file: url }]); } }
+    function insertNewRowAtIndex(index) {
+        const newChannel = { name: '', group: 'Uncategorized', logo: '', url: '', status: 'unchecked' };
+        playlistData.splice(index, 0, newChannel);
+        renderTable();
+        hasUnsavedChanges = true;
+        const newRowElement = playlistTableBody.querySelector(`tr[data-index="${index}"]`);
+        newRowElement?.querySelector('.name-input')?.focus();
+    }
+    function addNewRow() {
+        insertNewRowAtIndex(playlistData.length);
+    }
+    function applySort(column) { const multiplier = (sortState.column === column && sortState.direction === 'asc') ? -1 : 1; sortState.direction = multiplier === 1 ? 'asc' : 'desc'; sortState.column = column; playlistData.sort((a, b) => { const valA = (a[column] || '').toLowerCase(); const valB = (b[column] || '').toLowerCase(); if (valA === valB) { return (a.name || '').toLowerCase().localeCompare((b.name || '').toLowerCase()); } return valA.localeCompare(valB) * multiplier; }); updateSortButtonLabels(); renderTable(); }
+    function updateSortButtonLabels() { const nameArrow = sortState.column === 'name' ? (sortState.direction === 'asc' ? ' (A-Z)' : ' (Z-A)') : ''; btnSortName.textContent = `Sort by Name${nameArrow}`; }
+    function openGroupSortModal() {
+        const uniqueGroups = [...new Set(playlistData.map(item => item.group || "Uncategorized"))].sort();
+        groupSortList.innerHTML = '';
+        uniqueGroups.forEach(groupName => {
+            const li = document.createElement('li');
+            li.dataset.group = groupName;
+            li.innerHTML = `<span class="drag-handle">${icons.drag}</span>
+                            <span style="flex-grow: 1;">${escapeHTML(groupName)}</span>
+                            <button class="action-btn btn-delete btn-delete-group" title="Delete Group & Channels">${icons.trash}</button>`;
+            groupSortList.appendChild(li);
+
+            li.querySelector('.btn-delete-group').addEventListener('click', (e) => {
+                e.stopPropagation();
+                const channelsInGroup = playlistData.filter(item => (item.group || 'Uncategorized') === groupName).length;
+                if (confirm(`Are you sure you want to delete the "${groupName}" group and all ${channelsInGroup} of its channels? This cannot be undone.`)) {
+                    const originalCount = playlistData.length;
+                    playlistData = playlistData.filter(item => (item.group || 'Uncategorized') !== groupName);
+                    const removedCount = originalCount - playlistData.length;
+                    hasUnsavedChanges = true;
+                    renderTable();
+                    li.remove();
+                    showToast(`Group "${groupName}" and ${removedCount} channel(s) deleted.`, 'success');
+                }
+            });
+        });
+        groupSortModal.classList.add('visible');
+    }
+    function applyCustomGroupSort() { const newGroupOrder = Array.from(groupSortList.querySelectorAll('li')).map(li => li.dataset.group); playlistData.sort((a, b) => { const groupA = a.group || "Uncategorized"; const groupB = b.group || "Uncategorized"; const indexA = newGroupOrder.indexOf(groupA); const indexB = newGroupOrder.indexOf(groupB); if (indexA === indexB) { return (a.name || '').localeCompare(b.name || ''); } return indexA - indexB; }); renderTable(); groupSortModal.classList.remove('visible'); hasUnsavedChanges = true; }
+    function applyAllFilters() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const statusValue = statusFilter.value;
+        const groupValue = groupFilter.value;
+        playlistTableBody.querySelectorAll('tr').forEach(row => {
+            const index = parseInt(row.dataset.index, 10);
+            const item = playlistData[index];
+            if(!item) return;
+            const name = item.name.toLowerCase();
+            const group = item.group.toLowerCase();
+            const url = item.url.toLowerCase();
+            const searchMatch = name.includes(searchTerm) || group.includes(searchTerm) || url.includes(searchTerm);
+            const statusMatch = statusValue === 'all' || item.status === statusValue;
+            const groupMatch = groupValue === 'all' || item.group === groupValue;
+            row.style.display = (searchMatch && statusMatch && groupMatch) ? '' : 'none';
+        });
+        updateActionsBar();
+    }
+    function updateGroupFilter() {
+        const uniqueGroups = [...new Set(playlistData.map(item => item.group || "Uncategorized"))].sort();
+        const currentVal = groupFilter.value;
+        groupFilter.innerHTML = '<option value="all">All Groups</option>';
+        uniqueGroups.forEach(groupName => {
+            const option = document.createElement('option');
+            option.value = groupName;
+            option.textContent = groupName;
+            groupFilter.appendChild(option);
+        });
+        groupFilter.value = uniqueGroups.includes(currentVal) ? currentVal : 'all';
+    }
+    function getSelectedIndices() {
+        const indices = [];
+        playlistTableBody.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+            const index = parseInt(cb.closest('tr').dataset.index, 10);
+            indices.push(index);
+        });
+        return indices;
+    }
+    function updateActionsBar() {
+        const checkedCount = getSelectedIndices().length;
+
+        if (checkedCount > 0) {
+            bulkActionsBar.classList.add('visible');
+            selectedCountSpan.textContent = `${checkedCount} item(s) selected`;
+
+            const isSingleSelection = checkedCount === 1;
+            btnAddRowAbove.disabled = !isSingleSelection;
+            btnAddRowBelow.disabled = !isSingleSelection;
+        } else {
+            bulkActionsBar.classList.remove('visible');
+        }
+
+        const visibleRows = Array.from(playlistTableBody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+        selectAllCheckbox.checked = (checkedCount > 0 && checkedCount === visibleRows.length && visibleRows.length > 0);
+    }
+    function toggleSelectAll(event) {
+        const isChecked = event.target.checked;
+        playlistTableBody.querySelectorAll('tr').forEach(row => {
+            if(row.style.display !== 'none') {
+                const cb = row.querySelector('.row-checkbox');
+                cb.checked = isChecked;
+                row.classList.toggle('selected', isChecked);
+            }
+        });
+        updateActionsBar();
+    }
+    function bulkDelete() {
+        const indices = getSelectedIndices().sort((a, b) => b - a); 
+        if(indices.length === 0) return showToast('No items selected.', 'warning');
+        if(!confirm(`Are you sure you want to delete ${indices.length} selected items?`)) return;
+        indices.forEach(index => playlistData.splice(index, 1));
+        renderTable();
+        hasUnsavedChanges = true;
+    }
+    function bulkEditGroup() {
+        const indices = getSelectedIndices();
+        if(indices.length === 0) return showToast('No items selected.', 'warning');
+        const newGroup = prompt(`Enter new group name for ${indices.length} selected items:`, "New Group");
+        if(newGroup !== null) { 
+            indices.forEach(index => playlistData[index].group = newGroup);
+            renderTable();
+            hasUnsavedChanges = true;
+        }
+    }
+    async function bulkCheckStatus() {
+        const indices = getSelectedIndices();
+        if(indices.length === 0) return showToast('No items selected.', 'warning');
+        document.querySelector('.controls-accordion').open = true;
+        isCheckingAll = true;
+        statusCheckerControls.style.display = 'flex';
+        const totalToCheck = indices.length;
+        let checkedCount = 0;
+        checkerProgress.textContent = `Checking 0 of ${totalToCheck} selected...`;
+        for (const index of indices) {
+            if (!isCheckingAll) break;
+            await checkStreamStatus(index);
+            checkedCount++;
+            checkerProgress.textContent = `Checked ${checkedCount} of ${totalToCheck} selected...`;
+        }
+        isCheckingAll = false;
+        statusCheckerControls.style.display = 'none';
+    }
+    function deselectAll() {
+        playlistTableBody.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+            cb.checked = false;
+            cb.closest('tr').classList.remove('selected');
+        });
+        updateActionsBar();
+    }
+    function showStatsModal() {
+        const total = playlistData.length;
+        const online = playlistData.filter(i => i.status === 'online').length;
+        const offline = playlistData.filter(i => i.status === 'offline').length;
+        const invalid = playlistData.filter(i => i.status === 'invalid').length;
+        const checking = playlistData.filter(i => i.status === 'checking').length;
+        const unchecked = total - online - offline - invalid - checking;
+        const groups = new Set(playlistData.map(i => i.group)).size;
+        document.getElementById('statsList').innerHTML = `
+            <li><span>Total Channels:</span> <span>${total}</span></li>
+            <li><span>Online:</span> <span>${online}</span></li>
+            <li><span>Offline:</span> <span>${offline}</span></li>
+            <li><span>Invalid URL:</span> <span>${invalid}</span></li>
+            <li><span>Unchecked:</span> <span>${unchecked}</span></li>
+            <li><span>Unique Groups:</span> <span>${groups}</span></li>
+        `;
+        statsModal.classList.add('visible');
+    }
+    function initializeDragAndDrop() {
+        new Sortable(playlistTableBody, {
+            animation: 250,
+            filter: 'input, button, .row-checkbox',
+            preventOnFilter: false,
+            delay: 300,
+            delayOnTouchOnly: true,
+            onEnd: function (evt) {
+                const { oldIndex, newIndex } = evt;
+                const [movedItem] = playlistData.splice(oldIndex, 1);
+                playlistData.splice(newIndex, 0, movedItem);
+                renderTable();
+                hasUnsavedChanges = true;
+            }
+        });
+        new Sortable(groupSortList, {
+            animation: 250,
+            delay: 200,
+            delayOnTouchOnly: true
+        });
+    }
+    async function checkAllStatuses(recheckOnlyOffline = false) {
+        if (isCheckingAll) return;
+        document.querySelector('.controls-accordion').open = true;
+        isCheckingAll = true; 
+        statusCheckerControls.style.display = 'flex';
+        let itemsToCheck = [];
+        if (recheckOnlyOffline) { itemsToCheck = playlistData.map((item, index) => ({ index })).filter(d => playlistData[d.index].status === 'offline' || playlistData[d.index].status === 'invalid'); } else { itemsToCheck = playlistData.map((item, index) => ({ index })).filter(d => playlistData[d.index].status === 'unchecked'); }
+        const totalInList = itemsToCheck.length; const CHECK_LIMIT = 100; const wasLimited = !recheckOnlyOffline && totalInList > CHECK_LIMIT;
+        if (wasLimited) { itemsToCheck = itemsToCheck.slice(0, CHECK_LIMIT); }
+        const totalToCheck = itemsToCheck.length; let checkedCount = 0; checkerProgress.textContent = `Checking 0 of ${totalToCheck}...`;
+        const tasks = itemsToCheck.map(d => async () => { if (!isCheckingAll) return; await checkStreamStatus(d.index); checkedCount++; checkerProgress.textContent = `Checked ${checkedCount} of ${totalToCheck}...`; });
+        const BATCH_SIZE = 20; const PAUSE_BETWEEN_BATCHES = 4000;
+        for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
+            if (!isCheckingAll) break; const batch = tasks.slice(i, i + BATCH_SIZE); await Promise.all(batch.map(task => task()));
+            if (i + BATCH_SIZE < tasks.length && isCheckingAll) { checkerProgress.textContent = `Checked ${checkedCount} of ${totalToCheck}... Pausing...`; await new Promise(res => setTimeout(res, PAUSE_BETWEEN_BATCHES)); }
+        }
+        isCheckingAll = false; statusCheckerControls.style.display = 'none';
+        if (wasLimited) { startCooldownTimer(60); }
+    }
+    function startCooldownTimer(duration) {
+        let countdown = duration; const originalStartText = btnStartCheckAll.textContent; const originalRecheckText = btnRecheckOffline.textContent;
+        btnStartCheckAll.disabled = true; btnRecheckOffline.disabled = true;
+        const interval = setInterval(() => {
+            const text = `Wait ${countdown}s`; btnStartCheckAll.textContent = text; btnRecheckOffline.textContent = text; countdown--;
+            if (countdown < 0) { clearInterval(interval); btnStartCheckAll.disabled = false; btnRecheckOffline.disabled = false; btnStartCheckAll.textContent = originalStartText; btnRecheckOffline.textContent = originalRecheckText; }
+        }, 1000);
+    }
+    function generateAndSaveM3U() { const defaultFileName = `my-playlist_${new Date().toISOString().slice(0, 10)}.m3u`; let userFileName = prompt("Enter a filename for your playlist:", defaultFileName); if (!userFileName) return; if (!userFileName.toLowerCase().endsWith('.m3u') && !userFileName.toLowerCase().endsWith('.m3u8')) { userFileName += '.m3u'; } const finalPlaylist = playlistData.filter(item => item.url); let m3uContent = '#EXTM3U\n'; finalPlaylist.forEach(item => { m3uContent += `#EXTINF:-1`; if (item.group) m3uContent += ` group-title="${item.group}"`; if (item.logo) m3uContent += ` tvg-logo="${item.logo}"`; m3uContent += `,${item.name}\n${item.url}\n`; }); const blob = new Blob([m3uContent], { type: 'application/vnd.apple.mpegurl;charset=utf-8' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = userFileName; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(link.href); showToast('Playlist saved successfully!', 'success'); hasUnsavedChanges = false; }
+
+    // --- SCRIPT INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // Assign all DOM element variables
+        fileInput = document.getElementById('fileInput');
+        fileLoader = document.querySelector('.file-loader');
+        fileNameDisplay = document.getElementById('fileName');
+        urlInput = document.getElementById('urlInput');
+        btnLoadUrl = document.getElementById('btnLoadUrl');
+        initialView = document.getElementById('initial-view');
+        btnCreateNew = document.getElementById('btnCreateNew');
+        editorSection = document.getElementById('editor-section');
+        playlistTableBody = document.getElementById('playlistTableBody');
+        btnAddRow = document.getElementById('btnAddRow');
+        btnSortName = document.getElementById('btnSortName');
+        btnSortGroup = document.getElementById('btnSortGroup');
+        btnSave = document.getElementById('btnSave');
+        themeCheckbox = document.getElementById('theme-checkbox');
+        statusCheckerControls = document.getElementById('status-checker-controls');
+        cancelChecksBtn = document.getElementById('cancelChecksBtn');
+        btnRemoveOffline = document.getElementById('btnRemoveOffline');
+        btnRecheckOffline = document.getElementById('btnRecheckOffline');
+        btnStartCheckAll = document.getElementById('btnStartCheckAll');
+        checkerProgress = document.getElementById('checker-progress');
+        backToTopBtn = document.getElementById('backToTopBtn');
+        searchInput = document.getElementById('searchInput');
+        statusFilter = document.getElementById('statusFilter');
+        groupFilter = document.getElementById('groupFilter');
+        btnStats = document.getElementById('btnStats');
+        selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        bulkActionsBar = document.getElementById('bulk-actions-bar');
+        selectedCountSpan = document.getElementById('selected-count');
+        bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        bulkGroupBtn = document.getElementById('bulkGroupBtn');
+        bulkCheckBtn = document.getElementById('bulkCheckBtn');
+        bulkDeselectBtn = document.getElementById('bulkDeselectBtn');
+        playerModal = document.getElementById('playerModal');
+        modalTitle = document.getElementById('modalTitle');
+        groupSortModal = document.getElementById('groupSortModal');
+        groupSortList = document.getElementById('groupSortList');
+        statsModal = document.getElementById('statsModal');
+        btnAddRowAbove = document.getElementById('btnAddRowAbove');
+        btnAddRowBelow = document.getElementById('btnAddRowBelow');
+
+        // Set up theme
+        document.querySelector('.slider').innerHTML += `<div class="icon sun-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.106a.75.75 0 010 1.06l-1.591 1.59a.75.75 0 11-1.06-1.06l1.59-1.591a.75.75 0 011.06 0zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.894 17.894a.75.75 0 01-1.06 0l-1.59-1.591a.75.75 0 111.06-1.06l1.591 1.59a.75.75 0 010 1.061zM12 18a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM5.106 17.894a.75.75 0 010-1.06l1.591-1.59a.75.75 0 011.06 1.06l-1.59 1.591a.75.75 0 01-1.06 0zM3 12a.75.75 0 01.75-.75h2.25a.75.75 0 010 1.5H3.75A.75.75 0 013 12zM6.106 6.106a.75.75 0 011.06 0l1.59 1.591a.75.75 0 11-1.06 1.06L6.106 7.168a.75.75 0 010-1.06z" /></svg></div><div class="icon moon-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M9.528 1.718a.75.75 0 01.162.819A8.97 8.97 0 009 6a9 9 0 009 9 8.97 8.97 0 003.463-.69.75.75 0 01.981.98 10.503 10.503 0 01-9.694 6.46c-5.799 0-10.5-4.701-10.5-10.5 0-3.51 1.713-6.625 4.472-8.472a.75.75 0 01.819.162z" clip-rule="evenodd" /></svg></div>`;
+        if (localStorage.getItem('theme') === 'light') { themeCheckbox.checked = true; }
+
+        // Attach all event listeners
+        themeCheckbox.addEventListener('change', () => { document.body.classList.toggle('light-theme', themeCheckbox.checked); localStorage.setItem('theme', themeCheckbox.checked ? 'light' : 'dark'); });
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => fileLoader.addEventListener(eventName, e => e.preventDefault()));
+        fileLoader.addEventListener('drop', e => loadFile(e.dataTransfer.files[0]));
+        fileInput.addEventListener('change', e => loadFile(e.target.files[0]));
+        btnLoadUrl.addEventListener('click', handleUrlLoad);
+        urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); handleUrlLoad(); } });
+        btnCreateNew.addEventListener('click', createNewPlaylist);
+        btnAddRow.addEventListener('click', addNewRow);
+        btnSortName.addEventListener('click', () => { applySort('name'); hasUnsavedChanges = true; });
+        btnSortGroup.addEventListener('click', openGroupSortModal);
+        btnSave.addEventListener('click', generateAndSaveM3U);
+        btnStartCheckAll.addEventListener('click', () => checkAllStatuses(false));
+        btnRemoveOffline.addEventListener('click', removeOffline);
+        btnRecheckOffline.addEventListener('click', () => checkAllStatuses(true));
+        cancelChecksBtn.addEventListener('click', () => { isCheckingAll = false; statusCheckerControls.style.display = 'none'; });
+        searchInput.addEventListener('input', applyAllFilters);
+        statusFilter.addEventListener('change', applyAllFilters);
+        groupFilter.addEventListener('change', applyAllFilters);
+        btnStats.addEventListener('click', showStatsModal);
+        selectAllCheckbox.addEventListener('change', toggleSelectAll);
+        
+        // Action Bar Listeners
+        btnAddRowAbove.addEventListener('click', () => {
+            const selectedIndices = getSelectedIndices();
+            if (selectedIndices.length === 1) insertNewRowAtIndex(selectedIndices[0]);
+        });
+        btnAddRowBelow.addEventListener('click', () => {
+            const selectedIndices = getSelectedIndices();
+            if (selectedIndices.length === 1) insertNewRowAtIndex(selectedIndices[0] + 1);
+        });
+        bulkDeleteBtn.addEventListener('click', bulkDelete);
+        bulkGroupBtn.addEventListener('click', bulkEditGroup);
+        bulkCheckBtn.addEventListener('click', bulkCheckStatus);
+        bulkDeselectBtn.addEventListener('click', deselectAll);
+        
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal || e.target.classList.contains('modal-close')) {
+                    modal.classList.remove('visible');
+                    if(modal === playerModal) jwplayer("playerContainer").stop();
+                }
+            });
+        });
+        document.querySelector('#btnApplySort').addEventListener('click', applyCustomGroupSort);
+        document.querySelector('#btnCancelSort').addEventListener('click', () => groupSortModal.classList.remove('visible'));
+        
+        window.addEventListener('scroll', () => { backToTopBtn.style.display = (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) ? 'block' : 'none'; });
+        window.addEventListener('beforeunload', (e) => { if (hasUnsavedChanges) { e.preventDefault(); e.returnValue = ''; } });
+        
+        initializeDragAndDrop();
+    });
+    </script>
+</body>
+</html>
